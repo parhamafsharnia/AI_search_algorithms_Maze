@@ -1,5 +1,5 @@
 # AI_search_algorithms_Maze
-maze problem 
+maze problem solved with AI algotirhms
 summary
 In this project, we use Python to implement a maze with different square cells that might
 have a wall on each side, which has a starting cell and multiple target (end) cells. The maze
