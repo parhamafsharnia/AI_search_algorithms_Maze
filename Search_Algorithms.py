@@ -13,15 +13,104 @@ class Algorithms:
     def __init__(self, f_name):
         self.maze = Maze.Maze(f_name)
         self.start_point = self.maze.start
+        self.target_point = self.maze.target
         self.bfsqueue = Queue()
         self.dfsstack = []
         self.dlsstack = []
+        self.informed = False
+        self.priority_queue = []
         self.expanded_num = 0
 
-    def successor(self, point, cost_limit=None):
+    def heuristic(self, x, y):
+
+        return abs(x - self.target_point.x) + abs(y - self.target_point.y)
+
+    def evaluate_Function(self, cost=False):
+        self.priority_queue.sort(key=lambda x: x.man_distance, reverse=True)
+        if cost is False:  # f(n) = h(n)
+            self.priority_queue.sort(key=lambda x: x.man_distance, reverse=True)
+            return self.priority_queue.pop()
+        else:   # f(n) = g(n) + h(n)
+            self.priority_queue.sort(key=lambda x: x.cost, reverse=True)
+            return self.priority_queue.pop()
+
+    def aStar(self, point=None):
+        if self.informed is False:
+            self.informed = True
+        if point is None:
+            point = self.start_point
+        current = self.maze.cell_at(point.x, point.y)
+        current.visited = True
+        if self.isGoal(point):
+            self.trace()
+            return True
+        expanded = self.successor(point, path_cost=True)
+        if expanded is not None:
+            for cell in expanded:
+                self.priority_queue.append(cell)
+        if not len(self.priority_queue) == 0:
+            u = self.evaluate_Function(cost=True)
+            return self.aStar(u.pos)
+        return False
+
+    def greedy_BFS(self, point=None):
+        if self.informed is False:
+            self.informed = True
+        if point is None:
+            point = self.start_point
+        current = self.maze.cell_at(point.x, point.y)
+        current.visited = True
+        if self.isGoal(point):
+            self.trace()
+            return True
+        expanded = self.successor(point)
+        if expanded is not None:
+            for cell in expanded:
+                self.priority_queue.append(cell)
+        if not len(self.priority_queue) == 0:
+            u = self.evaluate_Function()
+            return self.greedy_BFS(u.pos)
+        return False
+
+        pass
+
+    def successor(self, point, cost_limit=None, path_cost=False):
         expanded = []
         current = self.maze.cell_at(point.x, point.y)
-        if cost_limit is None:
+        if self.informed is True:
+            parent_cost = current.cost
+            if (current.n is True) and not self.maze.cell_at(point.x - 1, point.y).visited:
+                expanded.append(self.maze.cell_at(point.x - 1, point.y))
+                self.maze.cell_at(point.x - 1, point.y).man_distance = self.heuristic(point.x - 1, point.y)
+                self.maze.cell_at(point.x - 1, point.y).parent = current.pos
+                if path_cost is True:  # for a-star
+                    self.maze.cell_at(point.x - 1, point.y).cost = \
+                        parent_cost + 1 + self.maze.cell_at(point.x - 1, point.y).man_distance
+            if (current.e is True) and not self.maze.cell_at(point.x, point.y + 1).visited:
+                expanded.append(self.maze.cell_at(point.x, point.y + 1))
+                self.maze.cell_at(point.x, point.y + 1).parent = current.pos
+                self.maze.cell_at(point.x, point.y + 1).man_distance = self.heuristic(point.x, point.y + 1)
+                if path_cost is True:  # for a-star
+                    self.maze.cell_at(point.x, point.y + 1).cost = \
+                        parent_cost + 1 + self.maze.cell_at(point.x, point.y + 1).man_distance
+            if (current.s is True) and not self.maze.cell_at(point.x + 1, point.y).visited:
+                expanded.append(self.maze.cell_at(point.x + 1, point.y))
+                self.maze.cell_at(point.x + 1, point.y).parent = current.pos
+                self.maze.cell_at(point.x + 1, point.y).man_distance = self.heuristic(point.x + 1, point.y)
+                if path_cost is True:  # for a-star
+                    self.maze.cell_at(point.x + 1, point.y).cost = \
+                        parent_cost + 1 + self.maze.cell_at(point.x + 1, point.y).man_distance
+            if (current.w is True) and not self.maze.cell_at(point.x, point.y - 1).visited:
+                expanded.append(self.maze.cell_at(point.x, point.y - 1))
+                self.maze.cell_at(point.x, point.y - 1).parent = current.pos
+                self.maze.cell_at(point.x, point.y - 1).man_distance = self.heuristic(point.x, point.y - 1)
+                if path_cost is True:  # for a-star
+                    self.maze.cell_at(point.x, point.y - 1).cost = \
+                        parent_cost + 1 + self.maze.cell_at(point.x, point.y - 1).man_distance
+            if len(expanded) != 0:
+                self.expanded_num += 1
+            return expanded
+        elif cost_limit is None:
             if (current.n is True) and not self.maze.cell_at(point.x - 1, point.y).visited:
                 expanded.append(self.maze.cell_at(point.x - 1, point.y))
                 self.maze.cell_at(point.x - 1, point.y).parent = current.pos
@@ -68,6 +157,8 @@ class Algorithms:
         return False
 
     def BFS(self, point=None):
+        if self.informed is True:
+            self.informed = False
         if point is None:
             point = self.start_point
         u = self.maze.cell_at(point.x, point.y)
@@ -85,6 +176,8 @@ class Algorithms:
         return False
 
     def DFS(self, point=None):
+        if self.informed is True:
+            self.informed = False
         if point is None:
             point = self.start_point
         u = self.maze.cell_at(point.x, point.y)
@@ -118,6 +211,8 @@ class Algorithms:
         return False
 
     def IDS(self, point=None, max_depth=0):
+        if self.informed is False:
+            self.informed = True
         if max_depth == 0:
             max_depth = self.maze.maze_row * self.maze.maze_col
         if point is None:
